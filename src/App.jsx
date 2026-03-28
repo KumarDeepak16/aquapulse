@@ -18,6 +18,9 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { WaterHistoryPage } from '@/pages/WaterHistoryPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { TodosPage } from '@/pages/TodosPage';
+import { ScoreCardPage } from '@/pages/ScoreCardPage';
+import { SharedScorePage } from '@/pages/SharedScorePage';
 import { getItem } from '@/lib/storage';
 import { STORAGE_KEYS, DEFAULT_WATER_REMINDERS } from '@/lib/constants';
 import { isWithinActiveHours } from '@/lib/date-utils';
@@ -127,6 +130,9 @@ function AppContent() {
             <Route path="/calculator" element={<CalculatorPage />} />
             <Route path="/summary" element={<SummaryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/todos" element={<TodosPage />} />
+            <Route path="/scorecard" element={<ScoreCardPage />} />
+            <Route path="/score" element={<SharedScorePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

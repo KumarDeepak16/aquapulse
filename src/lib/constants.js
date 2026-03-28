@@ -43,6 +43,13 @@ export const ACTIVITY_MULTIPLIERS = {
 
 export const WATER_QUICK_ADD = [100, 250, 500];
 
+export const WATER_REMINDER_PRESETS = [
+  { label: 'Light Sips', desc: 'Every 30 min, gentle pace', intervalMinutes: 30, activeHoursStart: '09:00', activeHoursEnd: '21:00' },
+  { label: 'Balanced', desc: 'Every hour, recommended', intervalMinutes: 60, activeHoursStart: '08:00', activeHoursEnd: '22:00' },
+  { label: 'Active Lifestyle', desc: 'Every 45 min, for workouts', intervalMinutes: 45, activeHoursStart: '06:00', activeHoursEnd: '22:00' },
+  { label: 'Office Hours', desc: 'Every 90 min during work', intervalMinutes: 90, activeHoursStart: '09:00', activeHoursEnd: '18:00' },
+];
+
 export const SOUNDS = {
   'water-drop': { label: 'Water Drop', file: '/sounds/water-drop.mp3' },
   'gentle-bell': { label: 'Gentle Bell', file: '/sounds/gentle-bell.mp3' },

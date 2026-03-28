@@ -1,18 +1,21 @@
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useApp } from '@/context/AppContext';
-import { Calculator, BarChart3, Settings, ChevronRight, ExternalLink, User, History } from 'lucide-react';
+import { Calculator, BarChart3, Settings, ChevronRight, ExternalLink, User, History, ListTodo, Trophy } from 'lucide-react';
 
 export function MorePage() {
   const navigate = useNavigate();
   const { profile } = useApp();
+  const firstName = profile.name ? profile.name.trim().split(/\s+/)[0] : '';
 
   const items = [
     { label: 'Profile', desc: '30-day analytics & body metrics', icon: User, path: '/profile', color: 'bg-primary/10 text-primary' },
+    { label: 'Score Card', desc: 'Hydration rating & share', icon: Trophy, path: '/scorecard', color: 'bg-amber-500/10 text-amber-500' },
+    { label: 'Tasks', desc: 'Your personal to-do list', icon: ListTodo, path: '/todos', color: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400' },
     { label: 'Water History', desc: 'Browse previous days', icon: History, path: '/water/history', color: 'bg-blue-500/10 text-blue-500 dark:text-blue-400' },
     { label: 'Calculator', desc: 'BMI & water calculator', icon: Calculator, path: '/calculator', color: 'bg-accent/15 text-accent' },
-    { label: 'Weekly Summary', desc: 'Hydration stats & charts', icon: BarChart3, path: '/summary', color: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400' },
-    { label: 'Settings', desc: 'Theme, sound, notifications', icon: Settings, path: '/settings', color: 'bg-muted text-muted-foreground' },
+    { label: 'Weekly Summary', desc: 'Hydration stats & charts', icon: BarChart3, path: '/summary', color: 'bg-indigo-500/10 text-indigo-500 dark:text-indigo-400' },
+    { label: 'Settings', desc: 'Theme, sound, backup', icon: Settings, path: '/settings', color: 'bg-muted text-muted-foreground' },
   ];
 
   return (
@@ -23,10 +26,10 @@ export function MorePage() {
       <div className="px-4 mt-2 mb-3">
         <div className="glass-card p-3 flex items-center gap-3 press-scale cursor-pointer" onClick={() => navigate('/profile')}>
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shrink-0">
-            <span className="text-base font-heading font-bold text-white">{profile.name ? profile.name[0].toUpperCase() : 'A'}</span>
+            <span className="text-base font-heading font-bold text-white">{firstName ? firstName[0].toUpperCase() : 'A'}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold truncate">{profile.name || 'AquaPulse User'}</p>
+            <p className="text-xs font-semibold truncate">{firstName || 'AquaPulse User'}</p>
             <p className="text-[10px] text-muted-foreground">{profile.weight}kg · {profile.height}cm · {profile.age}yr</p>
           </div>
           <ChevronRight size={14} className="text-muted-foreground/30" />

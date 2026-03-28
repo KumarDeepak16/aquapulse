@@ -95,6 +95,7 @@ export function Dashboard({ onSearchOpen }) {
   const pct = profile.dailyWaterGoal > 0 ? (todayTotal / profile.dailyWaterGoal) * 100 : 0;
   const h = new Date().getHours();
   const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = profile.name ? profile.name.trim().split(/\s+/)[0] : '';
 
   return (
     <div className="px-4 pb-safe pt-4 space-y-4">
@@ -102,7 +103,7 @@ export function Dashboard({ onSearchOpen }) {
       <div className="flex items-center justify-between slide-up">
         <div>
           <h1 className="text-xl font-heading font-bold tracking-tight">
-            {greeting}{profile.name ? `, ${profile.name}` : ''}
+            {greeting}{firstName ? `, ${firstName}` : ''}
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">Stay hydrated, stay healthy</p>
         </div>
