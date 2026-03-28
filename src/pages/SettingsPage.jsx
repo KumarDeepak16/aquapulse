@@ -87,23 +87,24 @@ export function SettingsPage() {
     setProfile(u);
   };
 
-  // Storage stats
+  // Storage stats — localStorage quota is ~5MB on most browsers
   const storageStats = useMemo(() => {
     const waterDays = Object.keys(waterLog.entries || {}).length;
     const totalEntries = Object.values(waterLog.entries || {}).reduce((s, e) => s + e.length, 0);
-    const createdDate = profile.createdAt || profile.onboardingComplete ? null : null;
 
-    let storageSize = 0;
+    let storageBytes = 0;
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.startsWith('AQUAPULSE_')) {
-        storageSize += localStorage.getItem(key)?.length || 0;
+        storageBytes += (localStorage.getItem(key)?.length || 0) * 2; // UTF-16
       }
     }
-    const sizeKB = (storageSize * 2 / 1024).toFixed(1); // UTF-16 = 2 bytes per char
+    const totalQuota = 5 * 1024 * 1024; // 5MB
+    const usedPct = Math.round((storageBytes / totalQuota) * 100);
+    const sizeKB = (storageBytes / 1024).toFixed(1);
 
-    return { waterDays, totalEntries, remindersCount: reminders.length, notesCount: notes.length, todosCount: todos.length, sizeKB };
-  }, [waterLog, reminders, notes, todos, profile]);
+    return { waterDays, totalEntries, remindersCount: reminders.length, notesCount: notes.length, todosCount: todos.length, sizeKB, usedPct };
+  }, [waterLog, reminders, notes, todos]);
 
   const handleDeleteAccount = () => {
     // Clear all AQUAPULSE_ keys
@@ -215,45 +216,43 @@ export function SettingsPage() {
               All data is stored <strong>locally on this device</strong>. Nothing is sent to any server. No account needed.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="p-2 rounded-lg bg-muted/30 text-center">
-              <Calendar size={12} className="text-blue-500 mx-auto mb-1" />
-              <p className="text-sm font-heading font-bold">{storageStats.waterDays}</p>
-              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Days Logged</p>
+          {/* Storage bar */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-muted-foreground">Storage Used</span>
+              <span className="text-[10px] font-semibold">{storageStats.sizeKB} KB ({storageStats.usedPct}%)</span>
             </div>
-            <div className="p-2 rounded-lg bg-muted/30 text-center">
-              <Droplets size={12} className="text-blue-500 mx-auto mb-1" />
-              <p className="text-sm font-heading font-bold">{storageStats.totalEntries}</p>
-              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Water Entries</p>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${storageStats.usedPct >= 80 ? 'bg-destructive' : storageStats.usedPct >= 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.max(1, storageStats.usedPct)}%` }} />
             </div>
-            <div className="p-2 rounded-lg bg-muted/30 text-center">
-              <HardDrive size={12} className="text-muted-foreground mx-auto mb-1" />
-              <p className="text-sm font-heading font-bold">{storageStats.sizeKB}</p>
-              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">KB Used</p>
-            </div>
+            <p className="text-[9px] text-muted-foreground mt-1">5 MB total · Only last 10 days of water data kept</p>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/30">
-              <Clock size={11} className="text-secondary shrink-0" />
-              <div>
-                <p className="text-xs font-bold">{storageStats.remindersCount}</p>
-                <p className="text-[7px] text-muted-foreground uppercase">Reminders</p>
-              </div>
+
+          {storageStats.usedPct >= 80 && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 stagger-in">
+              <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 leading-relaxed">
+                Storage is almost full. Export a backup and clear old data to free space.
+              </p>
             </div>
-            <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/30">
-              <StickyNote size={11} className="text-accent shrink-0" />
-              <div>
-                <p className="text-xs font-bold">{storageStats.notesCount}</p>
-                <p className="text-[7px] text-muted-foreground uppercase">Notes</p>
+          )}
+
+          {/* Stats grid */}
+          <div className="grid grid-cols-5 gap-1.5">
+            {[
+              { icon: Calendar, val: storageStats.waterDays, label: 'Days', color: 'text-blue-500' },
+              { icon: Droplets, val: storageStats.totalEntries, label: 'Entries', color: 'text-blue-500' },
+              { icon: Clock, val: storageStats.remindersCount, label: 'Reminders', color: 'text-secondary' },
+              { icon: StickyNote, val: storageStats.notesCount, label: 'Notes', color: 'text-accent' },
+              { icon: ListTodo, val: storageStats.todosCount, label: 'Tasks', color: 'text-emerald-500' },
+            ].map((s) => (
+              <div key={s.label} className="p-1.5 rounded-lg bg-muted/30 text-center">
+                <s.icon size={11} className={`${s.color} mx-auto mb-0.5`} />
+                <p className="text-xs font-bold">{s.val}</p>
+                <p className="text-[6px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/30">
-              <ListTodo size={11} className="text-emerald-500 shrink-0" />
-              <div>
-                <p className="text-xs font-bold">{storageStats.todosCount}</p>
-                <p className="text-[7px] text-muted-foreground uppercase">Tasks</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 

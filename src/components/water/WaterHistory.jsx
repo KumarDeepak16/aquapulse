@@ -57,7 +57,7 @@ export function WaterHistory({ entries, onRemove, compact = false, goal = 2500 }
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity press-scale shrink-0"
+                className="relative h-6 w-6 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity press-scale shrink-0"
                 onClick={() => onRemove(entry.id)}
               >
                 <Trash2 size={11} />

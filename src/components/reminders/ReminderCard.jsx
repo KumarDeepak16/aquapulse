@@ -30,7 +30,7 @@ export function ReminderCard({ reminder, onToggle, onDelete, onEdit, style }) {
                 <span key={i} className={`text-[8px] w-5 h-5 rounded-md flex items-center justify-center font-medium ${reminder.days.includes(i) ? 'bg-primary/10 text-primary' : 'text-muted-foreground/30'}`}>{day[0]}</span>
               ))}
             </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity"
               onClick={(e) => { e.stopPropagation(); onDelete(reminder.id); }}>
               <Trash2 size={11} />
             </Button>

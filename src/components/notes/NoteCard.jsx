@@ -22,7 +22,7 @@ export function NoteCard({ note, onEdit, onDelete, style, index = 0 }) {
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity"
             onClick={(e) => { e.stopPropagation(); onDelete(note.id); }}>
             <Trash2 size={11} />
           </Button>

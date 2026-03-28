@@ -61,7 +61,7 @@ export function TodosPage() {
                       className="w-5 h-5 rounded-md border-2 border-primary/40 hover:border-primary flex items-center justify-center press-scale transition-colors shrink-0"
                     />
                     <span className="text-xs flex-1 min-w-0 truncate">{todo.text}</span>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => { deleteTodo(todo.id); toast('Removed', { duration: 1000 }); }}>
                       <Trash2 size={10} />
                     </Button>
@@ -83,7 +83,7 @@ export function TodosPage() {
                       <Check size={11} className="text-primary-foreground" />
                     </button>
                     <span className="text-xs flex-1 min-w-0 truncate line-through">{todo.text}</span>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => deleteTodo(todo.id)}>
                       <Trash2 size={10} />
                     </Button>
