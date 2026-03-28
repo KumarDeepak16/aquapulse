@@ -25,7 +25,7 @@ export function MorePage() {
       {/* Profile card */}
       <div className="px-4 mt-2 mb-3">
         <div className="glass-card p-3 flex items-center gap-3 press-scale cursor-pointer" onClick={() => navigate('/profile')}>
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-linear-to-br from-primary to-blue-500 flex items-center justify-center shrink-0">
             <span className="text-base font-heading font-bold text-white">{firstName ? firstName[0].toUpperCase() : 'A'}</span>
           </div>
           <div className="flex-1 min-w-0">

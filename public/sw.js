@@ -1,17 +1,18 @@
-const CACHE_NAME = 'aquapulse-v3';
+const CACHE_NAME = 'aquapulse-v4';
 const FONT_CACHE = 'aquapulse-fonts-v1';
 
 const PRECACHE = [
   '/',
   '/index.html',
   '/favicon.svg',
-  '/manifest.json',
+  '/favicon.ico',
+  '/favicon-96x96.png',
+  '/apple-touch-icon.png',
+  '/site.webmanifest',
   '/robots.txt',
   '/sounds/water-drop.mp3',
   '/sounds/gentle-bell.mp3',
   '/sounds/success-chime.mp3',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
 ];
 
 // Install — precache shell

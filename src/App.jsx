@@ -25,65 +25,115 @@ import { getItem } from '@/lib/storage';
 import { STORAGE_KEYS, DEFAULT_WATER_REMINDERS } from '@/lib/constants';
 import { isWithinActiveHours } from '@/lib/date-utils';
 import { soundManager } from '@/lib/sound-manager';
+import { toast } from 'sonner';
 
 function ReminderScheduler() {
   const { settings } = useApp();
-  const lastWaterReminder = useRef(0);
+  const lastWaterReminder = useRef(Date.now()); // Start from now, not 0
   const lastReminderChecks = useRef({});
+  const hasRequestedPermission = useRef(false);
+
+  // Request notification permission once on mount
+  useEffect(() => {
+    if (hasRequestedPermission.current) return;
+    hasRequestedPermission.current = true;
+
+    if (settings.notificationsEnabled && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      // Delay permission request so it doesn't block app load
+      setTimeout(() => Notification.requestPermission(), 3000);
+    }
+  }, [settings.notificationsEnabled]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const check = () => {
       const now = new Date();
 
+      // ── Water reminders ──
       const waterConfig = getItem(STORAGE_KEYS.WATER_REMINDERS, DEFAULT_WATER_REMINDERS);
       if (
         waterConfig.enabled &&
-        settings.notificationsEnabled &&
         isWithinActiveHours(waterConfig.activeHoursStart, waterConfig.activeHoursEnd)
       ) {
         const elapsed = now.getTime() - lastWaterReminder.current;
         if (elapsed >= waterConfig.intervalMinutes * 60 * 1000) {
           lastWaterReminder.current = now.getTime();
-          if (settings.soundEnabled) soundManager.play(waterConfig.sound);
-          try {
-            if (Notification.permission === 'granted') {
-              new Notification('Time to hydrate!', {
-                body: 'Take a sip of water to stay on track.',
-                icon: '/favicon.svg',
-              });
-            }
-          } catch {}
+
+          // Play sound
+          if (settings.soundEnabled) {
+            soundManager.play(waterConfig.sound || 'water-drop');
+          }
+
+          // In-app toast always
+          toast('Time to hydrate! 💧', {
+            description: 'Take a sip of water to stay on track',
+            duration: 5000,
+          });
+
+          // Browser notification if allowed
+          if (settings.notificationsEnabled) {
+            try {
+              if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification('AquaPulse — Hydration Reminder', {
+                  body: 'Time to drink some water! 💧',
+                  icon: '/favicon-96x96.png',
+                  badge: '/favicon-96x96.png',
+                  tag: 'water-reminder', // Prevents duplicate notifications
+                  renotify: true,
+                });
+              }
+            } catch {}
+          }
         }
       }
 
+      // ── Custom reminders ──
       const remindersData = getItem(STORAGE_KEYS.REMINDERS, { items: [] });
       const currentDay = now.getDay();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
       remindersData.items.forEach((reminder) => {
-        if (
-          reminder.enabled &&
-          reminder.days.includes(currentDay) &&
-          reminder.time === currentTime &&
-          settings.notificationsEnabled
-        ) {
-          const checkKey = `${reminder.id}-${currentTime}`;
-          if (!lastReminderChecks.current[checkKey]) {
-            lastReminderChecks.current[checkKey] = true;
-            if (settings.soundEnabled) soundManager.play(reminder.sound);
-            try {
-              if (Notification.permission === 'granted') {
-                new Notification(reminder.title, {
-                  body: reminder.notes || 'Time for your reminder!',
-                  icon: '/favicon.svg',
-                });
-              }
-            } catch {}
-            setTimeout(() => { delete lastReminderChecks.current[checkKey]; }, 120000);
-          }
+        if (!reminder.enabled || !reminder.days.includes(currentDay) || reminder.time !== currentTime) return;
+
+        const checkKey = `${reminder.id}-${currentTime}`;
+        if (lastReminderChecks.current[checkKey]) return;
+
+        lastReminderChecks.current[checkKey] = true;
+
+        // Sound
+        if (settings.soundEnabled) {
+          soundManager.play(reminder.sound || 'gentle-bell');
         }
+
+        // In-app toast
+        toast(reminder.title, {
+          description: reminder.notes || 'Reminder!',
+          duration: 5000,
+        });
+
+        // Browser notification
+        if (settings.notificationsEnabled) {
+          try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              new Notification(reminder.title, {
+                body: reminder.notes || 'Time for your reminder!',
+                icon: '/favicon-96x96.png',
+                tag: `reminder-${reminder.id}`,
+                renotify: true,
+              });
+            }
+          } catch {}
+        }
+
+        // Clear check key after 2 min
+        setTimeout(() => { delete lastReminderChecks.current[checkKey]; }, 120000);
       });
-    }, 30000);
+    };
+
+    // Check every 15 seconds for more responsive reminders
+    const interval = setInterval(check, 15000);
+
+    // Also check immediately on mount
+    check();
 
     return () => clearInterval(interval);
   }, [settings]);
@@ -107,12 +157,12 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  // Public routes — no onboarding, no nav, standalone
+  // Public routes — no onboarding, no nav
   if (location.pathname === '/score') {
     return <SharedScorePage />;
   }
 
-  // Onboarding gate for all other routes
+  // Onboarding gate
   if (!profile.onboardingComplete) {
     return <OnboardingPage />;
   }

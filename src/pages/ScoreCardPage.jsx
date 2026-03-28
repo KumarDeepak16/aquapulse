@@ -140,7 +140,7 @@ export function ScoreCardPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${hasData ? rank.bg : 'from-muted-foreground/20 to-muted-foreground/10'} flex items-center justify-center`}>
+                <div className={`w-11 h-11 rounded-2xl bg-linear-to-br ${hasData ? rank.bg : 'from-muted-foreground/20 to-muted-foreground/10'} flex items-center justify-center`}>
                   <span className="text-base font-heading font-black text-white">{firstName[0]?.toUpperCase()}</span>
                 </div>
                 <div>
@@ -186,7 +186,7 @@ export function ScoreCardPage() {
                   </p>
                 )}
               </div>
-              <div className="flex gap-[3px] items-end">
+              <div className="flex gap-3 items-end">
                 {heatmapData.map((d, i) => (
                   <HeatmapCell key={i} score={d.score} index={i} onTap={setSelectedDay} />
                 ))}
@@ -207,7 +207,7 @@ export function ScoreCardPage() {
         {/* Share — only if has data */}
         {hasData && (
           <div className="grid grid-cols-2 gap-2 slide-up" style={{ animationDelay: '200ms' }}>
-            <Button className={`h-10 rounded-xl text-xs gap-1.5 press-scale bg-gradient-to-r ${rank.bg} border-0 text-white hover:opacity-90`} onClick={handleShare}>
+            <Button className={`h-10 rounded-xl text-xs gap-1.5 press-scale bg-linear-to-r ${rank.bg} border-0 text-white hover:opacity-90`} onClick={handleShare}>
               <Share2 size={13} /> Share Card
             </Button>
             <Button variant="outline" className="h-10 rounded-xl text-xs gap-1.5 press-scale" onClick={handleCopy}>

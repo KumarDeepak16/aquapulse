@@ -7,6 +7,7 @@ import { calculateWaterGoal } from '@/lib/calculations';
 import { useApp } from '@/context/AppContext';
 import { useNotification } from '@/hooks/useNotification';
 import { toastError } from '@/lib/toasts';
+import { soundManager } from '@/lib/sound-manager';
 
 export function OnboardingPage() {
   const { setProfile } = useApp();
@@ -37,7 +38,14 @@ export function OnboardingPage() {
   };
 
   const handleComplete = async () => {
+    // Request all permissions upfront
     await requestPermission();
+    soundManager.preload();
+    // Request persistent storage so data isn't cleared by browser
+    if (navigator.storage?.persist) {
+      try { await navigator.storage.persist(); } catch {}
+    }
+
     const w = parseFloat(form.weight) || 70;
     setProfile({
       name: form.name.trim(),

@@ -6,16 +6,17 @@ export function useSound() {
   const { settings } = useApp();
 
   useEffect(() => {
-    soundManager.setVolume(settings.soundVolume);
+    soundManager.setVolume(settings.soundVolume ?? 0.7);
   }, [settings.soundVolume]);
 
+  // Preload sounds on first user interaction
   useEffect(() => {
-    const handleInteraction = () => soundManager.unlock();
-    document.addEventListener('click', handleInteraction, { once: true });
-    document.addEventListener('touchstart', handleInteraction, { once: true });
+    const preload = () => soundManager.preload();
+    document.addEventListener('click', preload, { once: true });
+    document.addEventListener('touchstart', preload, { once: true });
     return () => {
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('click', preload);
+      document.removeEventListener('touchstart', preload);
     };
   }, []);
 
