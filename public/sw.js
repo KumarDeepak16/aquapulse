@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aquapulse-v2';
+const CACHE_NAME = 'aquapulse-v3';
 const FONT_CACHE = 'aquapulse-fonts-v1';
 
 const PRECACHE = [

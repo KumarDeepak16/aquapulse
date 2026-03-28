@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -6,13 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, Monitor, Volume2, VolumeX, Bell, User, ExternalLink, Droplets, Play, Download, Upload, ShieldCheck, FileJson, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import {
+  Sun, Moon, Monitor, Volume2, VolumeX, Bell, User, ExternalLink,
+  Droplets, Play, Download, Upload, ShieldCheck, FileJson,
+  ArrowDownToLine, ArrowUpFromLine, Smartphone, HardDrive,
+  Trash2, AlertTriangle, Calendar, StickyNote, Clock, ListTodo
+} from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useSound } from '@/hooks/useSound';
+import { useWaterTracker } from '@/hooks/useWaterTracker';
+import { useReminders } from '@/hooks/useReminders';
+import { useNotes } from '@/hooks/useNotes';
+import { useTodos } from '@/hooks/useTodos';
 import { calculateWaterGoal } from '@/lib/calculations';
 import { getItem } from '@/lib/storage';
 import { STORAGE_KEYS } from '@/lib/constants';
 import { toast } from 'sonner';
+import { format, differenceInDays } from 'date-fns';
 
 function exportData() {
   const data = {};
@@ -20,15 +30,16 @@ function exportData() {
     const val = getItem(key);
     if (val) data[key] = val;
   });
-  // Also grab todos
   const todos = localStorage.getItem('AQUAPULSE_TODOS');
   if (todos) data['AQUAPULSE_TODOS'] = JSON.parse(todos);
+  data._exportedAt = new Date().toISOString();
+  data._version = '1.0.0';
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `aquapulse-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `aquapulse-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
   a.click();
   URL.revokeObjectURL(url);
   toast.success('Backup exported', { description: 'Save this file somewhere safe' });
@@ -58,7 +69,12 @@ function importData(file) {
 export function SettingsPage() {
   const { profile, setProfile, settings, setSettings } = useApp();
   const { play } = useSound();
+  const { waterLog } = useWaterTracker();
+  const { reminders } = useReminders();
+  const { notes } = useNotes();
+  const { todos } = useTodos();
   const fileInputRef = useRef(null);
+  const [deleteStep, setDeleteStep] = useState(0); // 0=hidden, 1=warning, 2=confirm
 
   const update = (key, value) => {
     const u = { ...profile, [key]: value };
@@ -69,6 +85,37 @@ export function SettingsPage() {
       );
     }
     setProfile(u);
+  };
+
+  // Storage stats
+  const storageStats = useMemo(() => {
+    const waterDays = Object.keys(waterLog.entries || {}).length;
+    const totalEntries = Object.values(waterLog.entries || {}).reduce((s, e) => s + e.length, 0);
+    const createdDate = profile.createdAt || profile.onboardingComplete ? null : null;
+
+    let storageSize = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('AQUAPULSE_')) {
+        storageSize += localStorage.getItem(key)?.length || 0;
+      }
+    }
+    const sizeKB = (storageSize * 2 / 1024).toFixed(1); // UTF-16 = 2 bytes per char
+
+    return { waterDays, totalEntries, remindersCount: reminders.length, notesCount: notes.length, todosCount: todos.length, sizeKB };
+  }, [waterLog, reminders, notes, todos, profile]);
+
+  const handleDeleteAccount = () => {
+    // Clear all AQUAPULSE_ keys
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('AQUAPULSE_')) keys.push(key);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+
+    toast('All data cleared', { description: 'Starting fresh...' });
+    setTimeout(() => window.location.reload(), 800);
   };
 
   return (
@@ -144,10 +191,7 @@ export function SettingsPage() {
               </div>
               <Slider
                 value={[Math.round((settings.soundVolume ?? 0.7) * 100)]}
-                onValueChange={(val) => {
-                  const v = Array.isArray(val) ? val[0] : val;
-                  setSettings({ soundVolume: v / 100 });
-                }}
+                onValueChange={(val) => { const v = Array.isArray(val) ? val[0] : val; setSettings({ soundVolume: v / 100 }); }}
                 min={0} max={100} step={5}
               />
             </div>
@@ -159,17 +203,67 @@ export function SettingsPage() {
           </div>
         </div>
 
+        {/* Storage Info */}
+        <div className="glass-card p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center"><Smartphone size={12} className="text-blue-500" /></div>
+            <h3 className="text-xs font-semibold">Your Data</h3>
+          </div>
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30">
+            <HardDrive size={13} className="text-muted-foreground shrink-0" />
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              All data is stored <strong>locally on this device</strong>. Nothing is sent to any server. No account needed.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-2 rounded-lg bg-muted/30 text-center">
+              <Calendar size={12} className="text-blue-500 mx-auto mb-1" />
+              <p className="text-sm font-heading font-bold">{storageStats.waterDays}</p>
+              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Days Logged</p>
+            </div>
+            <div className="p-2 rounded-lg bg-muted/30 text-center">
+              <Droplets size={12} className="text-blue-500 mx-auto mb-1" />
+              <p className="text-sm font-heading font-bold">{storageStats.totalEntries}</p>
+              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Water Entries</p>
+            </div>
+            <div className="p-2 rounded-lg bg-muted/30 text-center">
+              <HardDrive size={12} className="text-muted-foreground mx-auto mb-1" />
+              <p className="text-sm font-heading font-bold">{storageStats.sizeKB}</p>
+              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">KB Used</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/30">
+              <Clock size={11} className="text-secondary shrink-0" />
+              <div>
+                <p className="text-xs font-bold">{storageStats.remindersCount}</p>
+                <p className="text-[7px] text-muted-foreground uppercase">Reminders</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/30">
+              <StickyNote size={11} className="text-accent shrink-0" />
+              <div>
+                <p className="text-xs font-bold">{storageStats.notesCount}</p>
+                <p className="text-[7px] text-muted-foreground uppercase">Notes</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/30">
+              <ListTodo size={11} className="text-emerald-500 shrink-0" />
+              <div>
+                <p className="text-xs font-bold">{storageStats.todosCount}</p>
+                <p className="text-[7px] text-muted-foreground uppercase">Tasks</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Data & Backup */}
         <div className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center"><ShieldCheck size={12} className="text-emerald-500" /></div>
-            <h3 className="text-xs font-semibold">Data & Backup</h3>
+            <h3 className="text-xs font-semibold">Backup & Restore</h3>
           </div>
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Your data is stored locally on this device. Export a backup to transfer to another device or keep safe.
-          </p>
 
-          {/* Export */}
           <button onClick={exportData}
             className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 press-scale transition-colors text-left group">
             <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
@@ -182,7 +276,6 @@ export function SettingsPage() {
             <Download size={14} className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
           </button>
 
-          {/* Import */}
           <button onClick={() => fileInputRef.current?.click()}
             className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 press-scale transition-colors text-left group">
             <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
@@ -199,9 +292,75 @@ export function SettingsPage() {
           <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30">
             <FileJson size={13} className="text-muted-foreground shrink-0" />
             <p className="text-[9px] text-muted-foreground leading-relaxed">
-              Backup includes: profile, water log, reminders, notes, tasks, and settings
+              Includes profile, water log, reminders, notes, tasks & settings
             </p>
           </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="glass-card p-4 space-y-3 border-destructive/20">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-destructive/10 flex items-center justify-center"><Trash2 size={12} className="text-destructive" /></div>
+            <h3 className="text-xs font-semibold text-destructive">Danger Zone</h3>
+          </div>
+
+          {deleteStep === 0 && (
+            <button onClick={() => setDeleteStep(1)}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-destructive/20 hover:bg-destructive/5 press-scale transition-colors text-left group">
+              <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                <Trash2 size={15} className="text-destructive" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-destructive">Delete All Data</p>
+                <p className="text-[9px] text-muted-foreground">Permanently erase everything & start fresh</p>
+              </div>
+            </button>
+          )}
+
+          {deleteStep === 1 && (
+            <div className="p-3 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3 stagger-in">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-destructive">Are you sure?</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">This will permanently delete:</p>
+                </div>
+              </div>
+              <div className="space-y-1 pl-6">
+                <p className="text-[10px] text-muted-foreground">• Your profile & settings</p>
+                <p className="text-[10px] text-muted-foreground">• All {storageStats.totalEntries} water entries ({storageStats.waterDays} days)</p>
+                <p className="text-[10px] text-muted-foreground">• All {storageStats.remindersCount} reminders</p>
+                <p className="text-[10px] text-muted-foreground">• All {storageStats.notesCount} notes</p>
+                <p className="text-[10px] text-muted-foreground">• All {storageStats.todosCount} tasks</p>
+                <p className="text-[10px] text-muted-foreground">• Weekly history & score data</p>
+              </div>
+              <p className="text-[10px] text-destructive font-semibold pl-6">This action cannot be undone. Export a backup first!</p>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" size="sm" className="flex-1 h-8 rounded-lg text-xs" onClick={() => setDeleteStep(0)}>Cancel</Button>
+                <Button variant="destructive" size="sm" className="flex-1 h-8 rounded-lg text-xs press-scale" onClick={() => setDeleteStep(2)}>
+                  I understand, continue
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {deleteStep === 2 && (
+            <div className="p-3 rounded-xl border border-destructive/40 bg-destructive/10 space-y-3 stagger-in">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={14} className="text-destructive" />
+                <p className="text-xs font-bold text-destructive">Final confirmation</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Tap "Delete Everything" to erase all data. You'll be taken back to onboarding to start fresh.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 h-8 rounded-lg text-xs" onClick={() => setDeleteStep(0)}>Go back</Button>
+                <Button size="sm" className="flex-1 h-8 rounded-lg text-xs press-scale bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteAccount}>
+                  Delete Everything
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="text-center py-4 space-y-1">
