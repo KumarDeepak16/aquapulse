@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -5,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, Monitor, Volume2, VolumeX, Bell, User, ExternalLink, Droplets, Play, Download, Upload } from 'lucide-react';
+import { Sun, Moon, Monitor, Volume2, VolumeX, Bell, User, ExternalLink, Droplets, Play, Download, Upload, ShieldCheck, FileJson, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useSound } from '@/hooks/useSound';
 import { calculateWaterGoal } from '@/lib/calculations';
@@ -19,6 +20,10 @@ function exportData() {
     const val = getItem(key);
     if (val) data[key] = val;
   });
+  // Also grab todos
+  const todos = localStorage.getItem('AQUAPULSE_TODOS');
+  if (todos) data['AQUAPULSE_TODOS'] = JSON.parse(todos);
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -29,18 +34,22 @@ function exportData() {
   toast.success('Backup exported', { description: 'Save this file somewhere safe' });
 }
 
-function importData(file, onDone) {
+function importData(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
+      let count = 0;
       Object.entries(data).forEach(([key, val]) => {
-        if (key.startsWith('AQUAPULSE_')) localStorage.setItem(key, JSON.stringify(val));
+        if (key.startsWith('AQUAPULSE_')) {
+          localStorage.setItem(key, JSON.stringify(val));
+          count++;
+        }
       });
-      toast.success('Backup restored', { description: 'Reloading app...' });
-      setTimeout(() => window.location.reload(), 1000);
+      toast.success('Backup restored', { description: `${count} items imported. Reloading...` });
+      setTimeout(() => window.location.reload(), 1200);
     } catch {
-      toast.error('Invalid backup file');
+      toast.error('Invalid file', { description: 'Make sure it\'s an AquaPulse backup JSON' });
     }
   };
   reader.readAsText(file);
@@ -49,6 +58,7 @@ function importData(file, onDone) {
 export function SettingsPage() {
   const { profile, setProfile, settings, setSettings } = useApp();
   const { play } = useSound();
+  const fileInputRef = useRef(null);
 
   const update = (key, value) => {
     const u = { ...profile, [key]: value };
@@ -61,19 +71,11 @@ export function SettingsPage() {
     setProfile(u);
   };
 
-  const handleVolumeChange = (val) => {
-    const v = val[0] / 100;
-    setSettings({ soundVolume: v });
-  };
-
-  const testSound = () => {
-    play('gentle-bell');
-  };
-
   return (
     <div className="pb-safe">
       <PageHeader title="Settings" subtitle="Make it yours" showBack />
       <div className="px-4 space-y-3 mt-2">
+
         {/* Profile */}
         <div className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -134,18 +136,19 @@ export function SettingsPage() {
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] text-muted-foreground">Volume</Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground font-medium w-8 text-right">{Math.round(settings.soundVolume * 100)}%</span>
-                  <Button variant="outline" size="sm" className="h-6 w-6 p-0 rounded-md" onClick={testSound} title="Test sound">
+                  <span className="text-[10px] text-muted-foreground font-medium w-8 text-right">{Math.round((settings.soundVolume ?? 0.7) * 100)}%</span>
+                  <Button variant="outline" size="sm" className="h-6 w-6 p-0 rounded-md" onClick={() => play('gentle-bell')} title="Test sound">
                     <Play size={10} />
                   </Button>
                 </div>
               </div>
               <Slider
-                value={[Math.round(settings.soundVolume * 100)]}
-                onValueChange={handleVolumeChange}
-                min={0}
-                max={100}
-                step={5}
+                value={[Math.round((settings.soundVolume ?? 0.7) * 100)]}
+                onValueChange={(val) => {
+                  const v = Array.isArray(val) ? val[0] : val;
+                  setSettings({ soundVolume: v / 100 });
+                }}
+                min={0} max={100} step={5}
               />
             </div>
           )}
@@ -156,20 +159,48 @@ export function SettingsPage() {
           </div>
         </div>
 
-        {/* Backup */}
+        {/* Data & Backup */}
         <div className="glass-card p-4 space-y-3">
-          <h3 className="text-xs font-semibold">Data Backup</h3>
-          <p className="text-[10px] text-muted-foreground">Export your data to keep a backup or transfer to another device</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] gap-1 press-scale" onClick={exportData}>
-              <Download size={12} /> Export
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] gap-1 press-scale relative" asChild>
-              <label className="cursor-pointer">
-                <Upload size={12} /> Import
-                <input type="file" accept=".json" className="sr-only" onChange={(e) => e.target.files[0] && importData(e.target.files[0])} />
-              </label>
-            </Button>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center"><ShieldCheck size={12} className="text-emerald-500" /></div>
+            <h3 className="text-xs font-semibold">Data & Backup</h3>
+          </div>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Your data is stored locally on this device. Export a backup to transfer to another device or keep safe.
+          </p>
+
+          {/* Export */}
+          <button onClick={exportData}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 press-scale transition-colors text-left group">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+              <ArrowDownToLine size={15} className="text-blue-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold">Export Backup</p>
+              <p className="text-[9px] text-muted-foreground">Download all data as JSON file</p>
+            </div>
+            <Download size={14} className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+          </button>
+
+          {/* Import */}
+          <button onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 press-scale transition-colors text-left group">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+              <ArrowUpFromLine size={15} className="text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold">Import Backup</p>
+              <p className="text-[9px] text-muted-foreground">Restore from a backup file</p>
+            </div>
+            <Upload size={14} className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+          </button>
+          <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={(e) => e.target.files[0] && importData(e.target.files[0])} />
+
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30">
+            <FileJson size={13} className="text-muted-foreground shrink-0" />
+            <p className="text-[9px] text-muted-foreground leading-relaxed">
+              Backup includes: profile, water log, reminders, notes, tasks, and settings
+            </p>
           </div>
         </div>
 

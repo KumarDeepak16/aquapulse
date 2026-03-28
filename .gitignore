@@ -30,14 +30,14 @@ lerna-debug.log*
 *.sln
 *.sw?
 
-# Claude Code
+# Claude Code & Skills
 .claude
+.claude/*
 .agents
+.agents/*
+skills-lock.json
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Lock files (optional)
-skills-lock.json
