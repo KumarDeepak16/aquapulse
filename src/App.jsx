@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { BottomNav } from '@/components/common/BottomNav';
@@ -93,6 +93,7 @@ function ReminderScheduler() {
 
 function AppContent() {
   const { profile } = useApp();
+  const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -106,6 +107,12 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
+  // Public routes — no onboarding, no nav, standalone
+  if (location.pathname === '/score') {
+    return <SharedScorePage />;
+  }
+
+  // Onboarding gate for all other routes
   if (!profile.onboardingComplete) {
     return <OnboardingPage />;
   }
@@ -113,7 +120,6 @@ function AppContent() {
   return (
     <>
       <ReminderScheduler />
-      {/* Gradient mesh background */}
       <div className="gradient-mesh" />
 
       <div className="flex justify-center hide-scrollbar">
@@ -132,7 +138,6 @@ function AppContent() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/todos" element={<TodosPage />} />
             <Route path="/scorecard" element={<ScoreCardPage />} />
-            <Route path="/score" element={<SharedScorePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
@@ -141,13 +146,7 @@ function AppContent() {
       <BottomNav />
       <OfflineIndicator />
       <UniversalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <Toaster
-        position="top-center"
-        richColors
-        toastOptions={{
-          className: 'glass-card !border-glass-border',
-        }}
-      />
+      <Toaster position="top-center" richColors />
     </>
   );
 }
