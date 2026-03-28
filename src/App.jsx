@@ -1,121 +1,155 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useRef, useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from '@/components/ui/sonner';
+import { AppProvider, useApp } from '@/context/AppContext';
+import { BottomNav } from '@/components/common/BottomNav';
+import { UniversalSearch } from '@/components/common/UniversalSearch';
+import { OnboardingPage } from '@/pages/OnboardingPage';
+import { Dashboard } from '@/pages/Dashboard';
+import { WaterPage } from '@/pages/WaterPage';
+import { RemindersPage } from '@/pages/RemindersPage';
+import { NotesPage } from '@/pages/NotesPage';
+import { NoteEditorPage } from '@/pages/NoteEditorPage';
+import { MorePage } from '@/pages/MorePage';
+import { CalculatorPage } from '@/pages/CalculatorPage';
+import { SummaryPage } from '@/pages/SummaryPage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { WaterHistoryPage } from '@/pages/WaterHistoryPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
+import { ProfilePage } from '@/pages/ProfilePage';
+import { getItem } from '@/lib/storage';
+import { STORAGE_KEYS, DEFAULT_WATER_REMINDERS } from '@/lib/constants';
+import { isWithinActiveHours } from '@/lib/date-utils';
+import { soundManager } from '@/lib/sound-manager';
 
-function App() {
-  const [count, setCount] = useState(0)
+function ReminderScheduler() {
+  const { settings } = useApp();
+  const lastWaterReminder = useRef(0);
+  const lastReminderChecks = useRef({});
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+
+      const waterConfig = getItem(STORAGE_KEYS.WATER_REMINDERS, DEFAULT_WATER_REMINDERS);
+      if (
+        waterConfig.enabled &&
+        settings.notificationsEnabled &&
+        isWithinActiveHours(waterConfig.activeHoursStart, waterConfig.activeHoursEnd)
+      ) {
+        const elapsed = now.getTime() - lastWaterReminder.current;
+        if (elapsed >= waterConfig.intervalMinutes * 60 * 1000) {
+          lastWaterReminder.current = now.getTime();
+          if (settings.soundEnabled) soundManager.play(waterConfig.sound);
+          try {
+            if (Notification.permission === 'granted') {
+              new Notification('Time to hydrate!', {
+                body: 'Take a sip of water to stay on track.',
+                icon: '/favicon.svg',
+              });
+            }
+          } catch {}
+        }
+      }
+
+      const remindersData = getItem(STORAGE_KEYS.REMINDERS, { items: [] });
+      const currentDay = now.getDay();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      remindersData.items.forEach((reminder) => {
+        if (
+          reminder.enabled &&
+          reminder.days.includes(currentDay) &&
+          reminder.time === currentTime &&
+          settings.notificationsEnabled
+        ) {
+          const checkKey = `${reminder.id}-${currentTime}`;
+          if (!lastReminderChecks.current[checkKey]) {
+            lastReminderChecks.current[checkKey] = true;
+            if (settings.soundEnabled) soundManager.play(reminder.sound);
+            try {
+              if (Notification.permission === 'granted') {
+                new Notification(reminder.title, {
+                  body: reminder.notes || 'Time for your reminder!',
+                  icon: '/favicon.svg',
+                });
+              }
+            } catch {}
+            setTimeout(() => { delete lastReminderChecks.current[checkKey]; }, 120000);
+          }
+        }
+      });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [settings]);
+
+  return null;
+}
+
+function AppContent() {
+  const { profile } = useApp();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
+
+  if (!profile.onboardingComplete) {
+    return <OnboardingPage />;
+  }
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      <ReminderScheduler />
+      {/* Gradient mesh background */}
+      <div className="gradient-mesh" />
 
-      <div className="ticks"></div>
+      <div className="flex justify-center hide-scrollbar">
+        <main className="w-full max-w-lg lg:max-w-2xl xl:max-w-3xl min-h-dvh transition-all">
+          <Routes>
+            <Route path="/" element={<Dashboard onSearchOpen={() => setSearchOpen(true)} />} />
+            <Route path="/water" element={<WaterPage />} />
+            <Route path="/water/history" element={<WaterHistoryPage />} />
+            <Route path="/reminders" element={<RemindersPage />} />
+            <Route path="/notes" element={<NotesPage />} />
+            <Route path="/notes/:id" element={<NoteEditorPage />} />
+            <Route path="/more" element={<MorePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/calculator" element={<CalculatorPage />} />
+            <Route path="/summary" element={<SummaryPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </main>
+      </div>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <BottomNav />
+      <UniversalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <Toaster
+        position="top-center"
+        richColors
+        toastOptions={{
+          className: 'glass-card !border-glass-border',
+        }}
+      />
     </>
-  )
+  );
 }
 
-export default App
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </BrowserRouter>
+  );
+}

@@ -1,3 +1,10 @@
+# Dependencies
+node_modules
+
+# Build
+dist
+dist-ssr
+
 # Logs
 logs
 *.log
@@ -7,18 +14,30 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Environment
+.env
+.env.local
+.env.*.local
 *.local
 
-# Editor directories and files
+# Editor
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code
+.claude
+.agents
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Lock files (optional)
+skills-lock.json
