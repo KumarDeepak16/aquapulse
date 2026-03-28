@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { BottomNav } from '@/components/common/BottomNav';
 import { UniversalSearch } from '@/components/common/UniversalSearch';
+import { OfflineIndicator } from '@/components/common/OfflineIndicator';
 import { OnboardingPage } from '@/pages/OnboardingPage';
 import { Dashboard } from '@/pages/Dashboard';
 import { WaterPage } from '@/pages/WaterPage';
@@ -132,6 +133,7 @@ function AppContent() {
       </div>
 
       <BottomNav />
+      <OfflineIndicator />
       <UniversalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <Toaster
         position="top-center"
